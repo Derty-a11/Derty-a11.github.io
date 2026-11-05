@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>€ Кликер</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --line:#e9ecf1; --text:#0f1419; --muted:#8a93a3;
+    --blue:#0a5cff; --green:#12a150;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    height:100dvh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    display:flex;flex-direction:column;overflow:hidden;
+    user-select:none;-webkit-user-select:none;touch-action:manipulation;
+  }
+
+  /* ---------- ШАПКА ---------- */
+  .top{padding:14px 18px 4px;flex:none;}
+  .bal{
+    font-size:38px;font-weight:800;letter-spacing:-1.2px;
+    text-align:center;font-variant-numeric:tabular-nums;
+  }
+  .per-sec{text-align:center;color:var(--muted);font-size:13px;font-weight:600;height:18px;margin-top:2px;}
+  .lvl-row{display:flex;align-items:center;gap:8px;margin-top:12px;}
+  .lvl-badge{
+    font-size:12px;font-weight:800;background:#eef3ff;color:var(--blue);
+    padding:4px 9px;border-radius:9px;white-space:nowrap;transition:background .2s,color .2s;
+  }
+  .lvl-badge.up{background:var(--blue);color:#fff;}
+  .bar{flex:1;height:8px;background:#eef1f5;border-radius:99px;overflow:hidden;}
+  .bar-fill{
+    height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,#4d8bff,#0a5cff);
+    transition:width .25s ease;
+  }
+  .lvl-xp{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
+
+  /* ---------- МОНЕТА ---------- */
+  .coin-wrap{flex:1;display:grid;place-items:center;position:relative;min-height:0;padding:8px;}
+  .coin{
+    width:min(62vw,232px);aspect-ratio:1;border-radius:50%;
+    display:grid;place-items:center;position:relative;cursor:pointer;
+    background:radial-gradient(circle at 32% 26%,
+      #fffbe6 0%, #ffe98a 26%, #f7c948 52%, #d99a13 78%, #a8710a 100%);
+    box-shadow:
+      inset 0 -10px 22px rgba(120,70,0,.35),
+      inset 0 10px 20px rgba(255,255,255,.75),
+      0 16px 34px rgba(180,130,20,.28),
+      0 4px 10px rgba(0,0,0,.06);
+    font-size:min(29vw,108px);font-weight:800;color:#8a5a06;
+    text-shadow:0 2px 1px rgba(255,255,255,.55), 0 -1px 1px rgba(120,70,0,.25);
+    transition:transform .08s ease;
+    touch-action:manipulation;
+  }
+  .coin::after{
+    content:'';position:absolute;inset:8.5%;border-radius:50%;
+    border:3px dashed rgba(138,90,6,.26);pointer-events:none;
+  }
+  .coin > span{position:relative;z-index:1;pointer-events:none;}
+  .coin:active{transform:scale(.945);}
+  .coin.pop{animation:pop .18s ease;}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(.9)}100%{transform:scale(1)}}
+
+  .float{
+    position:absolute;pointer-events:none;font-weight:800;font-size:20px;
+    color:var(--green);transform:translate(-50%,-50%);
+    animation:fly .9s ease-out forwards;white-space:nowrap;z-index:5;
+    text-shadow:0 1px 3px rgba(255,255,255,.95);
+  }
+  .float.crit{color:#ff8a00;font-size:27px;}
+  @keyframes fly{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
+    20%{opacity:1;transform:translate(-50%,-95%) scale(1.12);}
+    100%{opacity:0;transform:translate(-50%,-230%) scale(1);}
+  }
+
+  /* ---------- МАГАЗИН ---------- */
+  .shop{
+    flex:none;padding:6px 14px calc(14px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .card{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:#fff;border:1.5px solid var(--line);border-radius:16px;
+    padding:11px 14px;font-family:inherit;color:inherit;cursor:pointer;
+    box-shadow:0 2px 8px rgba(15,20,25,.04);
+    transition:transform .1s ease,border-color .15s,background .15s,opacity .15s;
+  }
+  .card:active:not(:disabled){transform:scale(.985);}
+  .card.can{border-color:#c9dcff;background:#f8fbff;}
+  .card:disabled{opacity:.45;cursor:default;}
+  .c-icon{
+    font-size:21px;width:36px;height:36px;flex:none;border-radius:11px;
+    display:grid;place-items:center;background:#f4f6fa;
+  }
+  .c-body{flex:1;min-width:0;}
+  .c-title{font-size:14px;font-weight:700;display:flex;gap:6px;align-items:center;}
+  .c-lvl{font-size:11px;font-weight:800;color:var(--muted);background:#f1f3f7;padding:1px 6px;border-radius:6px;}
+  .c-effect{
+    font-size:12px;color:var(--muted);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .c-cost{font-size:14px;font-weight:800;color:var(--blue);white-space:nowrap;}
+  .card:disabled .c-cost{color:var(--muted);}
+</style>
+</head>
+<body>
+
+  <div class="top">
+    <div class="bal" id="bal">0 €</div>
+    <div class="per-sec" id="perSec"></div>
+    <div class="lvl-row">
+      <span class="lvl-badge" id="lvlBadge">Ур. 1</span>
+      <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+      <span class="lvl-xp" id="lvlXp">0 / 100</span>
+    </div>
+  </div>
+
+  <div class="coin-wrap" id="coinWrap">
+    <div class="coin" id="coin"><span>€</span></div>
+  </div>
+
+  <div class="shop" id="shop"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ---------- TELEGRAM ---------- */
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready(); tg.expand();
+    try { tg.setHeaderColor('#ffffff'); tg.setBackgroundColor('#ffffff'); } catch (e) {}
+  }
+
+  /* ---------- СОСТОЯНИЕ ---------- */
+  const SAVE_KEY = 'euro_clicker_v1';
+
+  const S = {
+    bal: 0,
+    tapLvl: 1,
+    critLvl: 0,
+    autoLvl: 0,
+    totalEarned: 0,
+    level: 1,
+    levelBase: 0,
+    levelNeed: 100,
+    ts: Date.now()
+  };
+
+  /* ---------- МАТЕМАТИКА ---------- */
+  const xpNeed = lvl => Math.round(100 * Math.pow(1.55, lvl - 1));
+  const levelBonus = () => 1 + (S.level - 1) * 0.1;
+  const tapValue = () => S.tapLvl * levelBonus();
+  const nextTapValue = () => (S.tapLvl + 1) * levelBonus();
+  const autoRate = () => S.autoLvl * 0.5;
+  const critChance = () => Math.min(S.critLvl * 0.05, 0.5);
+  const CRIT_MULT = 3;
+
+  const nf = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+  function money(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2).replace('.', ',') + ' млрд';
+    if (n >= 1e6) return (n / 1e6).toFixed(2).replace('.', ',') + ' млн';
+    return nf.format(n);
+  }
+
+  function recalcLevel() {
+    let lvl = 1, base = 0, need = xpNeed(1);
+    while (S.totalEarned >= base + need) {
+      base += need; lvl++; need = xpNeed(lvl);
+    }
+    const leveled = lvl > S.level;
+    S.level = lvl; S.levelBase = base; S.levelNeed = need;
+    return leveled;
+  }
+
+  /* ---------- ГЛОБАЛЬНЫЙ БАЛАНС / XP ---------- */
+  function addMoney(amount) {
+    S.bal += amount;
+    S.totalEarned += amount;
+    return recalcLevel();
+  }
+
+  /* ---------- ПРОКАЧКИ ---------- */
+  const UPG = {
+    tap: {
+      icon: '👆', title: 'Сила тапа',
+      lvl: () => S.tapLvl,
+      cost: () => Math.floor(50 * Math.pow(1.6, S.tapLvl - 1)),
+      effect: () => `${money(tapValue())} € → ${money(nextTapValue())} € за тап`,
+      max: () => false,
+      buy: () => { S.tapLvl++; }
+    },
+    crit: {
+      icon: '⚡', title: 'Крит',
+      lvl: () => S.critLvl,
+      cost: () => Math.floor(250 * Math.pow(1.8, S.critLvl)),
+      effect: () => `${Math.round(critChance() * 100)}% шанс ×${CRIT_MULT}`,
+      max: () => S.critLvl >= 10,
+      buy: () => { S.critLvl++; }
+    },
+    auto: {
+      icon: '🤖', title: 'Авто-доход',
+      lvl: () => S.autoLvl,
+      cost: () => Math.floor(150 * Math.pow(1.7, S.autoLvl)),
+      effect: () => `${money(autoRate())} €/сек пассивно`,
+      max: () => false,
+      buy: () => { S.autoLvl++; }
+    }
+  };
+
+  /* ---------- DOM ---------- */
+  const $ = id => document.getElementById(id);
+  const balEl = $('bal'), perSecEl = $('perSec');
+  const lvlBadge = $('lvlBadge'), barFill = $('barFill'), lvlXp = $('lvlXp');
+  const coin = $('coin'), coinWrap = $('coinWrap'), shop = $('shop');
+
+  function buildShop() {
+    for (const [id, u] of Object.entries(UPG)) {
+      const card = document.createElement('button');
+      card.className = 'card';
+      card.innerHTML =
+        `<div class="c-icon">${u.icon}</div>
+         <div class="c-body">
+           <div class="c-title">${u.title} <span class="c-lvl"></span></div>
+           <div class="c-effect"></div>
+         </div>
+         <div class="c-cost"></div>`;
+      card.addEventListener('click', () => buy(id));
+      shop.appendChild(card);
+      u.el = card;
+      u.lvlEl = card.querySelector('.c-lvl');
+      u.effEl = card.querySelector('.c-effect');
+      u.costEl = card.querySelector('.c-cost');
+    }
+  }
+
+  function renderShop() {
+    for (const u of Object.values(UPG)) {
+      const done = u.max();
+      const cost = u.cost();
+      u.lvlEl.textContent = 'ур. ' + u.lvl();
+      u.effEl.textContent = done ? 'максимальный уровень' : u.effect();
+      u.costEl.textContent = done ? '—' : money(cost) + ' €';
+      const can = !done && S.bal >= cost;
+      u.el.disabled = !can;
+      u.el.classList.toggle('can', can);
+    }
+  }
+
+  function render() {
+    balEl.textContent = money(S.bal) + ' €';
+    const rate = autoRate();
+    perSecEl.textContent = rate > 0 ? `+${money(rate)} € в секунду` : '';
+
+    lvlBadge.textContent = 'Ур. ' + S.level;
+    const prog = S.totalEarned - S.levelBase;
+    barFill.style.width = Math.min(100, (prog / S.levelNeed) * 100) + '%';
+    lvlXp.textContent = `${money(prog)} / ${money(S.levelNeed)}`;
+
+    renderShop();
+  }
+
+  /* ---------- ДЕЙСТВИЯ ---------- */
+  function buy(id) {
+    const u = UPG[id];
+    if (u.max()) return;
+    const cost = u.cost();
+    if (S.bal < cost) return;
+    S.bal -= cost;
+    u.buy();
+    tg?.HapticFeedback?.impactOccurred('medium');
+    render(); save();
+  }
+
+  function onTap(e) {
+    const crit = Math.random() < critChance();
+    const gain = tapValue() * (crit ? CRIT_MULT : 1);
+    const leveled = addMoney(gain);
+
+    render();
+    spawnFloat(e, gain, crit);
+    coin.classList.remove('pop');
+    void coin.offsetWidth;
+    coin.classList.add('pop');
+    tg?.HapticFeedback?.impactOccurred(crit ? 'medium' : 'light');
+    if (leveled) onLevelUp();
+    scheduleSave();
+  }
+
+  function onLevelUp() {
+    lvlBadge.classList.add('up');
+    setTimeout(() => lvlBadge.classList.remove('up'), 900);
+    tg?.HapticFeedback?.notificationOccurred('success');
+  }
+
+  function spawnFloat(e, gain, crit) {
+    const r = coinWrap.getBoundingClientRect();
+    const x = (e.clientX || window.innerWidth / 2) - r.left;
+    const y = (e.clientY || window.innerHeight / 2) - r.top;
+
+    const el = document.createElement('div');
+    el.className = 'float' + (crit ? ' crit' : '');
+    el.textContent = `+${money(gain)} €`;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    coinWrap.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  coin.addEventListener('pointerdown', onTap);
+
+  /* ---------- АВТО-ДОХОД ---------- */
+  setInterval(() => {
+    const rate = autoRate();
+    if (rate <= 0) return;
+    if (addMoney(rate / 10)) onLevelUp();
+    render();
+  }, 100);
+
+  /* ---------- СОХРАНЕНИЕ ---------- */
+  let saveTimer = null, cloudTimer = null;
+
+  function snapshot() {
+    S.ts = Date.now();
+    return JSON.stringify(S);
+  }
+
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, snapshot()); } catch (e) {}
+    scheduleCloud();
+  }
+
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 1200);
+  }
+
+  function scheduleCloud() {
+    if (!tg?.CloudStorage) return;
+    clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(() => {
+      try { tg.CloudStorage.setItem(SAVE_KEY, snapshot(), () => {}); } catch (e) {}
+    }, 2500);
+  }
+
+  function applyLoaded(raw) {
+    try {
+      const d = JSON.parse(raw);
+      if (!d || typeof d !== 'object') return false;
+      Object.assign(S, {
+        bal: +d.bal || 0,
+        tapLvl: Math.max(1, +d.tapLvl || 1),
+        critLvl: Math.max(0, +d.critLvl || 0),
+        autoLvl: Math.max(0, +d.autoLvl || 0),
+        totalEarned: +d.totalEarned || 0,
+        ts: +d.ts || Date.now()
+      });
+      recalcLevel();
+
+      // офлайн-доход, максимум 2 часа
+      const sec = Math.min(Math.max(0, (Date.now() - S.ts) / 1000), 7200);
+      const offline = autoRate() * sec;
+      if (offline > 1) { addMoney(offline); }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function load() {
+    const local = localStorage.getItem(SAVE_KEY);
+    if (local && applyLoaded(local)) { render(); return; }
+
+    if (tg?.CloudStorage) {
+      try {
+        tg.CloudStorage.getItem(SAVE_KEY, (err, val) => {
+          if (!err && val && applyLoaded(val)) render();
+          else render();
+        });
+      } catch (e) { render(); }
+    } else {
+      render();
+    }
+  }
+
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') save();
+  });
+
+  /* ---------- СТАРТ ---------- */
+  buildShop();
+  recalcLevel();
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
